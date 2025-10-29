@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Keyboard, User, Bot, Target } from 'lucide-react';
-import PixelButton from '@/components/PixelButton';
+import PixelButton from '@/components/PixelButton.tsx';
 
 export default function Instructions() {
   const navigate = useNavigate();

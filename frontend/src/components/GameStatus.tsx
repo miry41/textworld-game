@@ -1,5 +1,5 @@
 import React from 'react';
-import { GameLog } from '@/types/game';
+import { GameLog } from '@/types/game.ts';
 
 interface GameStatusProps {
   logs: GameLog[];

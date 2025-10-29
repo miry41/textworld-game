@@ -1,5 +1,5 @@
 import React from 'react';
-import { AI_AGENT_STATES } from '@/types/game';
+import { AI_AGENT_STATES } from '@/types/game.ts';
 
 export interface ThinkingLog {
   id: string;

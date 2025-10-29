@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Gamepad2, User, Bot } from 'lucide-react';
-import { GAMES } from '@/types/game';
-import PixelButton from '@/components/PixelButton';
+import { GAMES } from '@/types/game.ts';
+import PixelButton from '@/components/PixelButton.tsx';
 
 export default function Home() {
   const navigate = useNavigate();

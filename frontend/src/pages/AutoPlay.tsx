@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, RotateCcw, AlertCircle, CheckCircle } from 'lucide-react';
-import { GameLog as GameLogType, AI_AGENT_STATES } from '@/types/game';
-import { apiClient } from '@/lib/api-client';
-import AAAgent, { ThinkingLog } from '@/components/AAAgent';
-import GameLog from '@/components/GameLog';
-import PixelButton from '@/components/PixelButton';
+import { GameLog as GameLogType, AI_AGENT_STATES } from '@/types/game.ts';
+import { apiClient } from '@/lib/api-client.ts';
+import AAAgent, { ThinkingLog } from '@/components/AAAgent.tsx';
+import GameLog from '@/components/GameLog.tsx';
+import PixelButton from '@/components/PixelButton.tsx';
 
 export default function AutoPlay() {
   const navigate = useNavigate();

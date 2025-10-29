@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
-import { GameLog as GameLogType, AI_AGENT_STATES } from '@/types/game';
-import { apiClient } from '@/lib/api-client';
-import AAAgent from '@/components/AAAgent';
-import GameLog from '@/components/GameLog';
-import GameStatus from '@/components/GameStatus';
-import PixelButton from '@/components/PixelButton';
+import { GameLog as GameLogType, AI_AGENT_STATES } from '@/types/game.ts';
+import { apiClient } from '@/lib/api-client.ts';
+import AAAgent from '@/components/AAAgent.tsx';
+import GameLog from '@/components/GameLog.tsx';
+import GameStatus from '@/components/GameStatus.tsx';
+import PixelButton from '@/components/PixelButton.tsx';
 
 export default function ManualPlay() {
   const navigate = useNavigate();
