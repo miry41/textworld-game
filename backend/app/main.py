@@ -95,9 +95,19 @@ async def textworld_error_handler(request, exc):
 
 
 # ヘルスチェックエンドポイント
-@app.get("/healthz")
+@app.get("/health")
 async def health_check():
     """ヘルスチェック"""
+    return {
+        "status": "ok",
+        "app_name": settings.app_name,
+        "gemini_api_configured": settings.gemini_api_key is not None
+    }
+
+# 互換性のために /healthz も追加
+@app.get("/healthz")
+async def healthz_check():
+    """ヘルスチェック（互換性のため）"""
     return {
         "status": "ok",
         "app_name": settings.app_name,
@@ -112,6 +122,6 @@ async def root():
     return {
         "message": f"Welcome to {settings.app_name}",
         "docs": "/docs",
-        "health": "/healthz"
+        "health": "/health"
     }
 

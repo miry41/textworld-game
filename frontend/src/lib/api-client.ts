@@ -99,7 +99,7 @@ export class TextWorldAPIClient {
   }
 
   async healthCheck(): Promise<{ status: string; gemini_api_configured?: boolean }> {
-    return this.request<{ status: string; gemini_api_configured?: boolean }>('/healthz');
+    return this.request<{ status: string; gemini_api_configured?: boolean }>('/health');
   }
 
   getCurrentSessionId(): string | null {

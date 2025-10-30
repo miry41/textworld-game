@@ -1,5 +1,6 @@
 from typing import List, Optional
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -16,11 +17,32 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     
     # CORS
+    frontend_url: Optional[str] = None
     cors_origins: List[str] = [
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:5173"
     ]
+    
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v, info):
+        """CORS originsをパース（環境変数からの読み込みに対応）"""
+        # 既にリストの場合
+        if isinstance(v, list):
+            origins = v
+        # カンマ区切りの文字列の場合
+        elif isinstance(v, str):
+            origins = [origin.strip() for origin in v.split(",")]
+        else:
+            origins = []
+        
+        # FRONTEND_URLが設定されている場合は追加
+        frontend_url = info.data.get("frontend_url")
+        if frontend_url and frontend_url not in origins:
+            origins.append(frontend_url)
+        
+        return origins
     
     # セッション
     session_timeout: int = 3600  # 秒
