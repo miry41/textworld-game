@@ -18,6 +18,12 @@ export default function ManualPlay() {
   const [isDone, setIsDone] = useState(false);
   const [sessionInitialized, setSessionInitialized] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [thinkingLogs, setThinkingLogs] = useState<Array<{
+    id: string;
+    timestamp: number;
+    message: string;
+    type: 'thinking' | 'action' | 'result' | 'observation';
+  }>>([]);
 
   useEffect(() => {
     const selectedGame = sessionStorage.getItem('selectedGame');
@@ -32,6 +38,16 @@ export default function ManualPlay() {
   const initializeGame = async () => {
     try {
       console.log('Initializing game...');
+      
+      setThinkingLogs([
+        {
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          message: 'ゲームを初期化しています...',
+          type: 'observation',
+        },
+      ]);
+
       const response = await apiClient.createSession();
       console.log('Session created:', response);
       console.log('Current session ID:', apiClient.getCurrentSessionId());
@@ -48,10 +64,29 @@ export default function ManualPlay() {
       };
       setLogs([initialLog]);
       setSessionInitialized(true);
+
+      setThinkingLogs((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          message: 'ゲーム初期化完了！指示を入力してください。',
+          type: 'result',
+        },
+      ]);
     } catch (error) {
       console.error('Failed to initialize game:', error);
       setAgentState('error');
       setSessionInitialized(false);
+      setThinkingLogs((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          message: 'エラー: ゲームの初期化に失敗しました',
+          type: 'result',
+        },
+      ]);
     }
   };
 
@@ -63,6 +98,7 @@ export default function ManualPlay() {
     setIsProcessing(false);
     setIsDone(false);
     setSessionInitialized(false);
+    setThinkingLogs([]);
     await initializeGame();
   };
 
@@ -75,10 +111,70 @@ export default function ManualPlay() {
     setAgentState('thinking');
 
     try {
-      const action = mapUserInputToAction(input);
+      // 現在のゲーム状態を取得
+      const currentLog = logs[logs.length - 1];
+      const currentObservation = currentLog?.observation || '';
+      const currentActions = currentLog?.available_actions || [];
+      const currentScore = currentLog?.score || 0;
+
+      // 指示受付ログを追加
+      setThinkingLogs((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          message: `プレイヤーの指示: ${input}`,
+          type: 'observation',
+        },
+      ]);
+
+      // Gemini APIを使用してアクションを提案してもらう
+      const geminiResponse = await apiClient.getGeminiSuggestedAction(
+        currentObservation,
+        currentActions,
+        currentScore,
+        input  // ユーザーの指示を送信
+      );
+
+      const action = geminiResponse.suggested_action;
       setLastAction(action);
 
+      // 思考過程ログを追加
+      if (geminiResponse.reasoning) {
+        setThinkingLogs((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            timestamp: Date.now(),
+            message: `💭 ${geminiResponse.reasoning}`,
+            type: 'thinking',
+          },
+        ]);
+      }
+
+      // 行動ログを追加
+      setThinkingLogs((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          message: `選択した行動: ${action}`,
+          type: 'action',
+        },
+      ]);
+
       const response = await apiClient.executeAction(action);
+
+      // 結果ログを追加
+      setThinkingLogs((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          message: `実行完了！ スコア: ${response.score} (報酬: ${response.reward > 0 ? '+' : ''}${response.reward})`,
+          type: 'result',
+        },
+      ]);
 
       const newLog: GameLogType = {
         id: crypto.randomUUID(),
@@ -192,12 +288,13 @@ export default function ManualPlay() {
             <GameLog logs={logs} />
           </div>
 
-          <div className="w-64 flex flex-col gap-4">
+          <div className="w-96 flex flex-col gap-4">
             <div className="flex-1 overflow-hidden">
               <AAAgent
                 state={agentState}
                 userInput={agentState === 'thinking' ? userInput : undefined}
                 lastAction={agentState === 'success' ? lastAction : undefined}
+                thinkingLogs={thinkingLogs}
               />
             </div>
 

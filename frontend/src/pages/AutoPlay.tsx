@@ -164,6 +164,19 @@ export default function AutoPlay() {
 
       const action = geminiResponse.suggested_action;
 
+      // 思考過程ログを追加
+      if (geminiResponse.reasoning) {
+        setThinkingLogs((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            timestamp: Date.now(),
+            message: `💭 ${geminiResponse.reasoning}`,
+            type: 'thinking',
+          },
+        ]);
+      }
+
       // 行動ログを追加
       setThinkingLogs((prev) => [
         ...prev,

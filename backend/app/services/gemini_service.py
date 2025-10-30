@@ -55,18 +55,18 @@ class GeminiService:
             # Gemini APIを呼び出し
             response = self.model.generate_content(prompt)
             
-            # レスポンスをパース
-            suggested_action = self._parse_response(
+            # レスポンスをパース（思考過程とアクションを分離）
+            suggested_action, reasoning = self._parse_response(
                 response.text,
                 available_actions
             )
             
             logger.info(f"AI suggested action: {suggested_action}")
-            logger.debug(f"AI reasoning: {response.text[:200]}")
+            logger.debug(f"AI reasoning: {reasoning}")
             
             return ActionSuggestion(
                 suggested_action=suggested_action,
-                reasoning=response.text[:200] if len(response.text) > 200 else response.text,
+                reasoning=reasoning,
                 is_fallback=False
             )
             
@@ -85,6 +85,13 @@ class GeminiService:
         
         actions_list = "\n".join([f"- {action}" for action in available_actions])
         
+        # プレイヤーの指示セクション（オプション）
+        instruction_section = f"""
+【プレイヤーの指示】
+{user_instruction}
+""" if user_instruction else ""
+        
+        # プロンプト全体を構築
         prompt = f"""あなたはテキストアドベンチャーゲームのエキスパートプレイヤーです。
 現在の状況と利用可能なアクションから、最適な行動を1つ選択してください。
 
@@ -96,19 +103,19 @@ class GeminiService:
 
 【現在のスコア】
 {score}
-"""
-        
-        if user_instruction:
-            prompt += f"\n【プレイヤーの指示】\n{user_instruction}\n"
-        
-        prompt += """
+{instruction_section}
 【目標】
 ゲームをクリアすることです。状況を分析し、利用可能なアクションの中から最適なものを1つ選んでください。
 
 【回答形式】
-選択したアクションだけを1行で答えてください。利用可能なアクションリストから正確に選んでください。
+以下の形式で回答してください：
 
-選択するアクション:
+思考過程: （状況分析と判断理由を2-3文で説明）
+選択: （利用可能なアクションから1つ選択）
+
+例：
+思考過程: 部屋には鍵があり、北にドアがある。まず鍵を取得してからドアを開けるのが効率的だ。
+選択: take key
 """
         
         return prompt
@@ -117,25 +124,57 @@ class GeminiService:
         self,
         response_text: str,
         available_actions: List[str]
-    ) -> str:
-        """レスポンスをパースしてアクションを抽出"""
+    ) -> tuple[str, str]:
+        """レスポンスをパースして思考過程とアクションを抽出"""
         
-        response_lower = response_text.lower().strip()
+        reasoning = ""
+        selected_action = ""
         
-        # 利用可能なアクションと照合
-        for action in available_actions:
-            if action.lower() in response_lower:
-                return action
+        # "思考過程:"と"選択:"のパターンを探す
+        lines = response_text.strip().split('\n')
         
-        # 完全一致が見つからない場合、部分一致を試す
-        for action in available_actions:
-            action_words = action.lower().split()
-            if any(word in response_lower for word in action_words):
-                return action
+        for line in lines:
+            line_stripped = line.strip()
+            
+            # 思考過程を抽出
+            if '思考過程:' in line_stripped or '思考過程：' in line_stripped:
+                reasoning = line_stripped.split(':', 1)[-1].split('：', 1)[-1].strip()
+            elif 'reasoning:' in line_stripped.lower():
+                reasoning = line_stripped.split(':', 1)[-1].strip()
+            
+            # 選択されたアクションを抽出
+            if '選択:' in line_stripped or '選択：' in line_stripped:
+                selected_action = line_stripped.split(':', 1)[-1].split('：', 1)[-1].strip()
+            elif 'action:' in line_stripped.lower() or 'selected:' in line_stripped.lower():
+                selected_action = line_stripped.split(':', 1)[-1].strip()
         
-        # それでも見つからない場合はランダム選択
-        logger.warning(f"Could not parse action from response: {response_text}")
-        return random.choice(available_actions)
+        # アクションが見つからない場合、利用可能なアクションと照合
+        if not selected_action:
+            response_lower = response_text.lower()
+            for action in available_actions:
+                if action.lower() in response_lower:
+                    selected_action = action
+                    break
+            
+            # 完全一致が見つからない場合、部分一致を試す
+            if not selected_action:
+                for action in available_actions:
+                    action_words = action.lower().split()
+                    if any(word in response_lower for word in action_words):
+                        selected_action = action
+                        break
+            
+            # それでも見つからない場合はランダム選択
+            if not selected_action:
+                logger.warning(f"Could not parse action from response: {response_text}")
+                selected_action = random.choice(available_actions)
+                reasoning = "アクションの解析に失敗したため、ランダムに選択しました。"
+        
+        # 思考過程が抽出できなかった場合は、レスポンス全体を使用
+        if not reasoning:
+            reasoning = response_text[:200] if len(response_text) > 200 else response_text
+        
+        return selected_action, reasoning
     
     def _fallback_action(self, available_actions: List[str]) -> ActionSuggestion:
         """フォールバックアクション（ランダム選択）"""
